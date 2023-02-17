@@ -132,9 +132,7 @@ def write2file(path, info, output):
                                                  word_idx * 1.0 / 100,
                                                  (word_idx + 1) * 1.0 / 100,
                                                  word[0]))
-            
-def print():
-    print(0)
+
 
 
 
