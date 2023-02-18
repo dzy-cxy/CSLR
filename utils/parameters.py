@@ -78,7 +78,7 @@ def get_parser():
     parser.add_argument(
         '--num-worker',
         type=int,
-        default=4,
+        default=0,
         help='the number of worker for data loader')
     parser.add_argument(
         '--feeder-args',
