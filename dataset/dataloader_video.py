@@ -2,6 +2,7 @@ import os
 import cv2
 import sys
 import pdb
+import packaging
 import six
 import glob
 import time
@@ -100,7 +101,7 @@ class BaseFeeder(data.Dataset):
             ])
 
     def byte_to_img(self, byteflow):
-        unpacked = pa.deserialize(byteflow)
+        unpacked = packaging.deserialize(byteflow)
         imgbuf = unpacked[0]
         buf = six.BytesIO()
         buf.write(imgbuf)
