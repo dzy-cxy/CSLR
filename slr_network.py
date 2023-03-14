@@ -9,6 +9,7 @@ import torch.nn.functional as F
 import torchvision.models as models
 from modules.criterions import SeqKD
 from modules import BiLSTMLayer, TemporalConv
+from modules import BAM
 
 
 class Identity(nn.Module):
@@ -42,7 +43,24 @@ class SLRModel(nn.Module):
         self.criterion_init()
         self.num_classes = num_classes
         self.loss_weights = loss_weights
-        self.conv2d = getattr(models, c2d_type)(pretrained=True)
+        #self.conv2d = getattr(models, c2d_type)(pretrained=True)
+        
+        self.resnet18 = models.resnet18(pretrained=True)#加载model
+        self.Attention_Net = CNN(Bottleneck, [3, 4, 6, 3])#自定义网络
+        #读取参数
+        pretrained_dict = self.resnet18.state_dict()
+        model_dict = self.Attention_Net.state_dict()
+
+        # 将pretrained_dict里不属于model_dict的键剔除掉
+        pretrained_dict =  {k: v for k, v in pretrained_dict.items() if k in model_dict}
+
+        # 更新现有的model_dict
+        model_dict.update(pretrained_dict)
+
+        # 加载我们真正需要的state_dict
+        self.Attention_Net.load_state_dict(model_dict)
+        
+        
         self.conv2d.fc = Identity()
         self.conv1d = TemporalConv(input_size=512,
                                    hidden_size=hidden_size,
