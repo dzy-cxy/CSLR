@@ -9,7 +9,7 @@ import torch.nn.functional as F
 import torchvision.models as models
 from modules.criterions import SeqKD
 from modules import BiLSTMLayer, TemporalConv
-from modules import BAM
+from modules import Attention_Net
 
 
 class Identity(nn.Module):
@@ -46,7 +46,7 @@ class SLRModel(nn.Module):
         #self.conv2d = getattr(models, c2d_type)(pretrained=True)
         
         self.resnet18 = models.resnet18(pretrained=True)#加载model
-        self.Attention_Net = CNN(Bottleneck, [3, 4, 6, 3])#自定义网络
+        self.Attention_Net = Attention_Net.ResidualNet( 'ImageNet', 18, 1000, 'CBAM')#自定义网络
         #读取参数
         pretrained_dict = self.resnet18.state_dict()
         model_dict = self.Attention_Net.state_dict()
@@ -59,7 +59,7 @@ class SLRModel(nn.Module):
 
         # 加载我们真正需要的state_dict
         self.Attention_Net.load_state_dict(model_dict)
-        
+        self.conv2d = self.Attention_Net
         
         self.conv2d.fc = Identity()
         self.conv1d = TemporalConv(input_size=512,
