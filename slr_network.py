@@ -13,9 +13,6 @@ from modules import BiLSTMLayer, TemporalConv
 =======
 from modules import Attention_Net, Spatial_Attention_Net, Temporal_Attention_Net
 
->>>>>>> Stashed changes
-
-
 class Identity(nn.Module):
     def __init__(self):
         super(Identity, self).__init__()
