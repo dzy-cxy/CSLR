@@ -9,8 +9,7 @@ import torch.nn.functional as F
 import torchvision.models as models
 from modules.criterions import SeqKD
 from modules import BiLSTMLayer, TemporalConv
-<<<<<<< Updated upstream
-=======
+
 from modules import Attention_Net, Spatial_Attention_Net, Temporal_Attention_Net
 
 class Identity(nn.Module):
@@ -44,10 +43,10 @@ class SLRModel(nn.Module):
         self.criterion_init()
         self.num_classes = num_classes
         self.loss_weights = loss_weights
-<<<<<<< Updated upstream
+
         self.conv2d = getattr(models, c2d_type)(pretrained=True)
         self.conv2d.fc = Identity()
-=======
+
         #self.conv2d = getattr(models, c2d_type)(pretrained=True)
         
         self.resnet18 = models.resnet18(pretrained=True)#加载model
@@ -77,7 +76,7 @@ class SLRModel(nn.Module):
         self.Spatial_conv2d.fc = Identity()
         self.Temporal_conv2d.fc = Identity()
         
->>>>>>> Stashed changes
+           
         self.conv1d = TemporalConv(input_size=512,
                                    hidden_size=hidden_size,
                                    conv_type=conv_type,
