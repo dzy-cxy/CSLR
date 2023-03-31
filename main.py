@@ -46,7 +46,10 @@ class Processor():
                 if eval_model:
                     dev_wer = seq_eval(self.arg, self.data_loader['dev'], self.model, self.device,
                                        'dev', epoch, self.arg.work_dir, self.recoder, self.arg.evaluate_tool)
+                    test_wer = seq_eval(self.arg, self.data_loader["test"], self.model, self.device,
+                                "test", epoch, self.arg.work_dir, self.recoder, self.arg.evaluate_tool)
                     self.recoder.print_log("Dev WER: {:05.2f}%".format(dev_wer))
+                    self.recoder.print_log("Test WER: {:05.2f}%".format(test_wer))
                 if save_model:
                     model_path = "{}dev_{:05.2f}_epoch{}_model.pt".format(self.arg.work_dir, dev_wer, epoch)
                     seq_model_list.append(model_path)

@@ -2,7 +2,7 @@ feeder: dataset.dataloader_video.BaseFeeder
 phase: train
 dataset: phoenix14
 # dataset: phoenix14-si5
-num_epoch: 40
+num_epoch: 50
 work_dir: ./work_dir/baseline_res18/
 batch_size: 2
 random_seed: 0
@@ -11,14 +11,14 @@ num_worker: 10
 device: 0,1
 log_interval: 50
 eval_interval: 1
-save_interval: 5
+save_interval: 20
 # python in default
-evaluate_tool: sclite
+evaluate_tool: python
 loss_weights:
   SeqCTC: 1.0
   # VAC
-  # ConvCTC: 1.0
-  # Dist: 10.0
+  ConvCTC: 1.0
+  Dist: 15.0
 #load_weights: ''
 
 optimizer_args:
@@ -46,3 +46,4 @@ model_args:
   # SMKD
   share_classifier: False
   weight_norm: False
+  

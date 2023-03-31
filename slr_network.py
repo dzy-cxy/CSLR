@@ -9,6 +9,11 @@ import torch.nn.functional as F
 import torchvision.models as models
 from modules.criterions import SeqKD
 from modules import BiLSTMLayer, TemporalConv
+<<<<<<< Updated upstream
+=======
+from modules import Attention_Net, Spatial_Attention_Net, Temporal_Attention_Net
+
+>>>>>>> Stashed changes
 
 
 class Identity(nn.Module):
@@ -42,8 +47,40 @@ class SLRModel(nn.Module):
         self.criterion_init()
         self.num_classes = num_classes
         self.loss_weights = loss_weights
+<<<<<<< Updated upstream
         self.conv2d = getattr(models, c2d_type)(pretrained=True)
         self.conv2d.fc = Identity()
+=======
+        #self.conv2d = getattr(models, c2d_type)(pretrained=True)
+        
+        self.resnet18 = models.resnet18(pretrained=True)#加载model
+        #self.Attention_Net = Attention_Net.ResidualNet( 'ImageNet', 18, 1000, 'CBAM')#自定义网络
+        self.Spatial_Attention_Net = Spatial_Attention_Net.ResidualNet( 'ImageNet', 18, 1000, 'CBAM')
+        self.Temporal_Attention_Net = Temporal_Attention_Net.ResidualNet( 'ImageNet', 18, 1000, 'CBAM')
+
+        #读取参数
+        pretrained_dict = self.resnet18.state_dict()
+        Spatial_model_dict = self.Spatial_Attention_Net.state_dict()
+        Temporal_model_dict = self.Temporal_Attention_Net.state_dict()
+
+        # 将pretrained_dict里不属于model_dict的键剔除掉
+        Spatial_pretrained_dict =  {k: v for k, v in pretrained_dict.items() if k in Spatial_model_dict}
+        Temporal_pretrained_dict =  {k: v for k, v in pretrained_dict.items() if k in Temporal_model_dict}
+
+        # 更新现有的model_dict
+        Spatial_model_dict.update(Spatial_pretrained_dict)
+        Temporal_model_dict.update(Temporal_pretrained_dict)
+
+        # 加载真正需要的state_dict
+        self.Spatial_Attention_Net.load_state_dict(Spatial_model_dict)
+        self.Temporal_Attention_Net.load_state_dict(Temporal_model_dict)
+        self.Spatial_conv2d = self.Spatial_Attention_Net
+        self.Temporal_conv2d = self.Temporal_Attention_Net
+        
+        self.Spatial_conv2d.fc = Identity()
+        self.Temporal_conv2d.fc = Identity()
+        
+>>>>>>> Stashed changes
         self.conv1d = TemporalConv(input_size=512,
                                    hidden_size=hidden_size,
                                    conv_type=conv_type,
@@ -66,12 +103,22 @@ class SLRModel(nn.Module):
         for g in grad_input:
             g[g != g] = 0
 
-    def masked_bn(self, inputs, len_x):
+    def Spatial_masked_bn(self, inputs, len_x):
         def pad(tensor, length):
             return torch.cat([tensor, tensor.new(length - tensor.size(0), *tensor.size()[1:]).zero_()])
 
         x = torch.cat([inputs[len_x[0] * idx:len_x[0] * idx + lgt] for idx, lgt in enumerate(len_x)])
-        x = self.conv2d(x)
+        x = self.Spatial_conv2d(x)
+        x = torch.cat([pad(x[sum(len_x[:idx]):sum(len_x[:idx + 1])], len_x[0])
+                       for idx, lgt in enumerate(len_x)])
+        return x
+    
+    def Temporal_masked_bn(self, inputs, len_x):
+        def pad(tensor, length):
+            return torch.cat([tensor, tensor.new(length - tensor.size(0), *tensor.size()[1:]).zero_()])
+
+        x = torch.cat([inputs[len_x[0] * idx:len_x[0] * idx + lgt] for idx, lgt in enumerate(len_x)])
+        x = self.Temporal_conv2d(x)
         x = torch.cat([pad(x[sum(len_x[:idx]):sum(len_x[:idx + 1])], len_x[0])
                        for idx, lgt in enumerate(len_x)])
         return x
@@ -80,29 +127,38 @@ class SLRModel(nn.Module):
         if len(x.shape) == 5:
             # videos
             batch, temp, channel, height, width = x.shape
+            #print(batch, temp, channel, height, width)
             inputs = x.reshape(batch * temp, channel, height, width)
-            framewise = self.masked_bn(inputs, len_x)
-            framewise = framewise.reshape(batch, temp, -1).transpose(1, 2)
+            Spatial_framewise = self.Spatial_masked_bn(inputs, len_x).reshape(batch, temp, -1).transpose(1, 2)
+            Temporal_framewise = self.Temporal_masked_bn(inputs, len_x).reshape(batch, temp, -1).transpose(1, 2)
+            #framewise = framewise.reshape(batch, temp, -1).transpose(1, 2)
         else:
             # frame-wise features
-            framewise = x
+            Spatial_framewise = x
+            Temporal_framewise = x
 
-        conv1d_outputs = self.conv1d(framewise, len_x)
+        Spatial_conv1d_outputs = self.conv1d(Spatial_framewise, len_x)
+        Temporal_conv1d_outputs = self.conv1d(Temporal_framewise, len_x)
+        
         # x: T, B, C
-        x = conv1d_outputs['visual_feat']
-        lgt = conv1d_outputs['feat_len']
-        tm_outputs = self.temporal_model(x, lgt)
+        Temporal_x = Temporal_conv1d_outputs['visual_feat']
+        Temporal_lgt = Temporal_conv1d_outputs['feat_len']
+        
+        x = Spatial_conv1d_outputs['visual_feat']
+        lgt = Spatial_conv1d_outputs['feat_len']
+        
+        tm_outputs = self.temporal_model(Temporal_x, Temporal_lgt)
         outputs = self.classifier(tm_outputs['predictions'])
         pred = None if self.training \
-            else self.decoder.decode(outputs, lgt, batch_first=False, probs=False)
+            else self.decoder.decode(outputs, Temporal_lgt, batch_first=False, probs=False)
         conv_pred = None if self.training \
-            else self.decoder.decode(conv1d_outputs['conv_logits'], lgt, batch_first=False, probs=False)
+            else self.decoder.decode(Temporal_conv1d_outputs['conv_logits'], Temporal_lgt, batch_first=False, probs=False)
 
         return {
-            "framewise_features": framewise,
+            "framewise_features": Temporal_framewise,
             "visual_features": x,
             "feat_len": lgt,
-            "conv_logits": conv1d_outputs['conv_logits'],
+            "conv_logits": Temporal_conv1d_outputs['conv_logits'],
             "sequence_logits": outputs,
             "conv_sents": conv_pred,
             "recognized_sents": pred,
